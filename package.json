@@ -23,8 +23,7 @@
     "agent"
   ],
   "bin": {
-    "survey": "./bin/survey.ts",
-    "survey-dev": "./bin/survey.ts"
+    "survey": "./bin/survey.ts"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
