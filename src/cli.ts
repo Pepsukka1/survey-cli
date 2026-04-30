@@ -1,1 +1,238 @@
-export {};
+import { confirm, intro, isCancel, outro } from "@clack/prompts";
+import { Command } from "commander";
+import { stringify } from "csv-stringify/sync";
+import { runAgent } from "./runner/agent.ts";
+import { runInteractive } from "./runner/interactive.ts";
+import { showSummary } from "./runner/summary.ts";
+import { serializeSurvey } from "./serialize.ts";
+import {
+  clearInProgress,
+  listResponses,
+  loadAllSurveys,
+  loadInProgress,
+  loadSurveyById,
+  readResponse,
+  saveInProgress,
+  saveResponse,
+} from "./storage.ts";
+
+export function buildProgram(): Command {
+  const program = new Command();
+  program
+    .name("survey")
+    .description(
+      "Run surveys from your terminal. Agent-friendly, type-safe, OSS.",
+    )
+    .version("0.0.1");
+
+  program
+    .command("list")
+    .description("List surveys in ./surveys (or --dir)")
+    .option(
+      "-d, --dir <path>",
+      "directory containing survey files",
+      "./surveys",
+    )
+    .action(async (opts) => {
+      const surveys = await loadAllSurveys(opts.dir);
+      if (surveys.length === 0) {
+        console.log(`No surveys found in ${opts.dir}`);
+        return;
+      }
+      for (const survey of surveys) {
+        console.log(
+          `${survey.id}\t${survey.title}\t(${survey.questions.length} questions)`,
+        );
+      }
+    });
+
+  program
+    .command("schema <id>")
+    .description("Print survey schema as JSON")
+    .option(
+      "-d, --dir <path>",
+      "directory containing survey files",
+      "./surveys",
+    )
+    .action(async (id, opts) => {
+      const survey = await loadSurveyById(id, opts.dir);
+      if (!survey) {
+        console.error(`Survey not found: ${id}`);
+        process.exit(1);
+      }
+      console.log(JSON.stringify(serializeSurvey(survey), null, 2));
+    });
+
+  program
+    .command("take <id>")
+    .description(
+      "Run survey interactively, in agent batch mode, or via stdin JSON",
+    )
+    .option(
+      "-d, --dir <path>",
+      "directory containing survey files",
+      "./surveys",
+    )
+    .option(
+      "-a, --answers <json>",
+      "agent batch: provide answers as JSON string",
+    )
+    .option("--json", "agent batch: read answers from stdin as JSON")
+    .option("-y, --yes", "skip summary confirm prompt")
+    .action(async (id, opts) => {
+      const survey = await loadSurveyById(id, opts.dir);
+      if (!survey) {
+        console.error(`Survey not found: ${id}`);
+        process.exit(1);
+      }
+
+      if (opts.answers || opts.json) {
+        const raw = opts.json
+          ? await Bun.stdin.text()
+          : (opts.answers as string);
+        let parsed: Record<string, unknown>;
+        try {
+          parsed = JSON.parse(raw);
+        } catch (error) {
+          console.error(`Invalid JSON: ${(error as Error).message}`);
+          process.exit(1);
+        }
+
+        const result = runAgent(survey, parsed);
+        if (!result.ok) {
+          console.error(
+            JSON.stringify(
+              { ok: false, errors: result.errors, visited: result.visited },
+              null,
+              2,
+            ),
+          );
+          process.exit(1);
+        }
+
+        const summary = await showSummary(survey, result.answers, {
+          skipConfirm: Boolean(opts.yes),
+        });
+        if (!summary.confirmed) {
+          console.error(`Cancelled: ${summary.reason}`);
+          process.exit(1);
+        }
+
+        console.log(saveResponse(survey.id, result.answers));
+        return;
+      }
+
+      const inProgress = loadInProgress(survey.id);
+      let resumeFrom: Record<string, unknown> | undefined;
+      let resumeStartId: string | null | undefined;
+      if (inProgress) {
+        intro("Resume previous session?");
+        const choice = await confirm({
+          message: `Found in-progress at ${inProgress.lastQuestionId ?? "start"}. Resume?`,
+        });
+        if (isCancel(choice)) {
+          outro("Cancelled");
+          process.exit(0);
+        }
+        if (choice) {
+          resumeFrom = inProgress.answers;
+          resumeStartId = inProgress.lastQuestionId;
+        } else {
+          clearInProgress(survey.id);
+        }
+      }
+
+      const result = await runInteractive(survey, {
+        resumeFrom,
+        resumeStartId,
+      });
+      if (!result.ok) {
+        saveInProgress(survey.id, result.partial, result.lastQuestionId);
+        console.error("Saved in-progress. Run again to resume.");
+        process.exit(1);
+      }
+
+      const summary = await showSummary(survey, result.answers, {
+        skipConfirm: Boolean(opts.yes),
+      });
+      if (!summary.confirmed) {
+        console.error(`Cancelled: ${summary.reason}`);
+        process.exit(1);
+      }
+
+      clearInProgress(survey.id);
+      console.log(saveResponse(survey.id, result.answers));
+    });
+
+  const responses = program
+    .command("responses <id>")
+    .description("List or show responses for a survey")
+    .option("--export <format>", "export all responses (csv|json)")
+    .action((id, opts) => {
+      if (opts.export) {
+        const all = listResponses(id);
+        if (opts.export === "csv") {
+          const answerIds = new Set<string>();
+          for (const response of all) {
+            for (const key of Object.keys(response.answers)) answerIds.add(key);
+          }
+          const headers = ["timestamp", ...answerIds];
+          const rows = all.map((response) => [
+            response.timestamp,
+            ...Array.from(answerIds).map((key) =>
+              formatCell(response.answers[key]),
+            ),
+          ]);
+          process.stdout.write(stringify([headers, ...rows]));
+          return;
+        }
+        if (opts.export === "json") {
+          console.log(JSON.stringify(all, null, 2));
+          return;
+        }
+        console.error(`Unknown export format: ${opts.export}`);
+        process.exit(1);
+      }
+
+      const all = listResponses(id);
+      if (all.length === 0) {
+        console.log("(no responses)");
+        return;
+      }
+      for (const response of all) console.log(response.timestamp);
+    });
+
+  responses
+    .command("show <timestamp>")
+    .description("Show one response by timestamp prefix")
+    .action((timestamp, _opts, cmd) => {
+      const id = cmd.parent?.args[0];
+      if (!id) {
+        console.error("missing survey id");
+        process.exit(1);
+      }
+      const response = readResponse(id, timestamp);
+      if (!response) {
+        console.error("not found");
+        process.exit(1);
+      }
+      console.log(JSON.stringify(response, null, 2));
+    });
+
+  return program;
+}
+
+function formatCell(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  if (Array.isArray(value)) return value.join(",");
+  return String(value);
+}
+
+if (import.meta.main) {
+  buildProgram()
+    .parseAsync(process.argv)
+    .catch((error) => {
+      console.error(error);
+      process.exit(1);
+    });
+}
