@@ -1,0 +1,43 @@
+---
+import Commands from "../components/Commands.astro";
+import CodeBlock from "../components/CodeBlock.astro";
+import EngravedDivider from "../components/EngravedDivider.astro";
+import FeatureRow from "../components/FeatureRow.astro";
+import Footer from "../components/Footer.astro";
+import Hero from "../components/Hero.astro";
+import Nav from "../components/Nav.astro";
+import Terminal from "../components/Terminal.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+---
+
+<BaseLayout
+  title="@crafter/survey-cli · Surveys from your terminal"
+  description="Type-safe, agent-friendly, open source surveys from your terminal. Define a survey in five lines, run it interactively, or pipe answers from an agent."
+>
+  <Nav />
+  <main>
+    <Hero />
+    <section class="container-shell py-block">
+      <Terminal />
+    </section>
+    <EngravedDivider />
+    <CodeBlock />
+    <EngravedDivider />
+    <FeatureRow />
+    <EngravedDivider />
+    <Commands />
+    <EngravedDivider />
+    <section class="container-shell py-section text-center">
+      <h2 class="section-title">Ask, don't form.</h2>
+      <div class="mt-8 flex justify-center">
+        <button class="ghost-button ember-glow-accent mono min-h-12" type="button" data-copy-command="bun add -g @crafter/survey-cli">
+          bun add -g @crafter/survey-cli
+        </button>
+      </div>
+      <p class="mt-5 text-small text-silver-steel">
+        MIT licensed. Made by <a class="text-frost-silver hover:text-ember-red" href="https://crafterstation.com">Crafter Station</a>.
+      </p>
+    </section>
+  </main>
+  <Footer />
+</BaseLayout>

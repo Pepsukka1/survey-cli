@@ -1,0 +1,36 @@
+---
+const highlighted = [
+  '<span class="text-iron-gray">// surveys/onboarding.ts</span>',
+  '<span class="text-ember-red">import</span> { defineSurvey, q } <span class="text-ember-red">from</span> <span class="text-forge-orange">"@crafter/survey-cli/define"</span>',
+  '<span class="text-ember-red">import</span> { z } <span class="text-ember-red">from</span> <span class="text-forge-orange">"zod"</span>',
+  "",
+  '<span class="text-ember-red">export default</span> defineSurvey({',
+  '  id: <span class="text-forge-orange">"onboarding"</span>,',
+  '  title: <span class="text-forge-orange">"Welcome"</span>,',
+  "  questions: [",
+  '    q.select(<span class="text-forge-orange">"role"</span>, <span class="text-forge-orange">"Role?"</span>, [<span class="text-forge-orange">"dev"</span>, <span class="text-forge-orange">"designer"</span>, <span class="text-forge-orange">"founder"</span>]),',
+  '    q.multiselect(<span class="text-forge-orange">"stack"</span>, <span class="text-forge-orange">"Stack?"</span>, [<span class="text-forge-orange">"next"</span>, <span class="text-forge-orange">"astro"</span>, <span class="text-forge-orange">"remix"</span>]),',
+  '    q.text(<span class="text-forge-orange">"blocker"</span>, <span class="text-forge-orange">"Biggest blocker?"</span>, { schema: z.string().min(<span class="text-pale-wraith">10</span>) }),',
+  '    q.confirm(<span class="text-forge-orange">"followup"</span>, <span class="text-forge-orange">"Want followup?"</span>, {',
+  '      next: (a) =&gt; a.followup ? <span class="text-forge-orange">"email"</span> : <span class="text-pale-wraith">null</span>,',
+  "    }),",
+  '    q.text(<span class="text-forge-orange">"email"</span>, <span class="text-forge-orange">"Email?"</span>, {',
+  "      schema: z.string().email(),",
+  "      skipIf: (a) =&gt; !a.followup,",
+  "    }),",
+  "  ],",
+  "})",
+].join("\n");
+---
+
+<section id="docs" class="container-shell py-section">
+  <div class="grid gap-10 lg:grid-cols-[0.42fr_0.58fr] lg:items-start">
+    <div>
+      <h2 class="section-title">Define a survey.</h2>
+      <p class="mt-5 max-w-[420px] text-frost-silver">
+        Type-safe end-to-end. Branching via <span class="mono text-silver-steel">next()</span>. Validation via Zod. No DSL.
+      </p>
+    </div>
+    <pre class="mono overflow-x-auto border border-iron-gray/70 bg-ash-charcoal p-5 text-[13px] leading-[1.5] text-frost-silver"><code set:html={highlighted} /></pre>
+  </div>
+</section>

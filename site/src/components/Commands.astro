@@ -1,0 +1,40 @@
+---
+const commands = [
+  ["survey list", "list surveys in ./surveys"],
+  ["survey schema <id>", "print survey schema as JSON"],
+  ["survey take <id>", "interactive (humano en TTY)"],
+  ["survey take <id> --answers '{...}'", "agent batch"],
+  ["echo '{...}' | survey take <id> --json", "agent batch via stdin"],
+  ["survey take <id> --yes", "skip summary confirm"],
+  ["survey responses <id>", "list saved responses"],
+  ["survey responses <id> --export csv", "export all to CSV"],
+  ["survey responses <id> show <ts>", "show one response by timestamp"],
+];
+---
+
+<section class="container-shell py-block">
+  <div class="mb-8 flex flex-col justify-between gap-4 md:flex-row md:items-end">
+    <h2 class="section-title">Commands.</h2>
+    <p class="max-w-[420px] text-small text-silver-steel">
+      Responses persist to <span class="mono">~/.survey-cli/&lt;survey-id&gt;/&lt;timestamp&gt;.json</span>. Override with <span class="mono">SURVEY_CLI_HOME=/path</span>.
+    </p>
+  </div>
+  <div class="overflow-x-auto border border-iron-gray/70">
+    <table class="w-full min-w-[720px] border-collapse bg-void-black text-left">
+      <thead>
+        <tr class="border-b border-iron-gray/70 text-micro font-medium tracking-[0.02em] text-silver-steel uppercase">
+          <th class="w-[46%] px-4 py-3">Command</th>
+          <th class="px-4 py-3">What it does</th>
+        </tr>
+      </thead>
+      <tbody>
+        {commands.map(([command, description]) => (
+          <tr class="border-b border-iron-gray/50 last:border-b-0">
+            <td class="mono px-4 py-4 text-small text-pale-wraith">{command}</td>
+            <td class="px-4 py-4 text-small text-frost-silver">{description}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</section>
