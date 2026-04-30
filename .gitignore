@@ -1,0 +1,8 @@
+node_modules/
+dist/
+*.log
+.env
+.env.*
+~/.survey-cli/
+coverage/
+.DS_Store
