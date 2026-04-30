@@ -23,7 +23,8 @@
     "agent"
   ],
   "bin": {
-    "survey": "./bin/survey.ts"
+    "survey": "./bin/survey.ts",
+    "survey-dev": "./bin/survey.ts"
   },
   "main": "./src/index.ts",
   "types": "./src/index.ts",
@@ -51,6 +52,7 @@
     "@clack/prompts": "^1.3.0",
     "commander": "^12.1.0",
     "csv-stringify": "^6.5.0",
+    "picocolors": "^1.1.1",
     "zod": "^3.23.0"
   },
   "devDependencies": {

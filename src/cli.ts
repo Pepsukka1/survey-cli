@@ -1,6 +1,7 @@
 import { confirm, intro, isCancel, outro } from "@clack/prompts";
 import { Command } from "commander";
 import { stringify } from "csv-stringify/sync";
+import pc from "picocolors";
 import { runAgent } from "./runner/agent.ts";
 import { runInteractive } from "./runner/interactive.ts";
 import { showSummary } from "./runner/summary.ts";
@@ -36,12 +37,12 @@ export function buildProgram(): Command {
     .action(async (opts) => {
       const surveys = await loadAllSurveys(opts.dir);
       if (surveys.length === 0) {
-        console.log(`No surveys found in ${opts.dir}`);
+        console.log(pc.dim(`No surveys found in ${opts.dir}`));
         return;
       }
       for (const survey of surveys) {
         console.log(
-          `${survey.id}\t${survey.title}\t(${survey.questions.length} questions)`,
+          `${pc.cyan(survey.id)}  ${pc.dim(survey.title)}  ${pc.gray(`(${survey.questions.length} questions)`)}`,
         );
       }
     });
@@ -57,10 +58,10 @@ export function buildProgram(): Command {
     .action(async (id, opts) => {
       const survey = await loadSurveyById(id, opts.dir);
       if (!survey) {
-        console.error(`Survey not found: ${id}`);
+        console.error(pc.red(`Survey not found: ${id}`));
         process.exit(1);
       }
-      console.log(JSON.stringify(serializeSurvey(survey), null, 2));
+      console.log(colorizeJson(serializeSurvey(survey)));
     });
 
   program
@@ -82,7 +83,7 @@ export function buildProgram(): Command {
     .action(async (id, opts) => {
       const survey = await loadSurveyById(id, opts.dir);
       if (!survey) {
-        console.error(`Survey not found: ${id}`);
+        console.error(pc.red(`Survey not found: ${id}`));
         process.exit(1);
       }
 
@@ -94,19 +95,18 @@ export function buildProgram(): Command {
         try {
           parsed = JSON.parse(raw);
         } catch (error) {
-          console.error(`Invalid JSON: ${(error as Error).message}`);
+          console.error(pc.red(`Invalid JSON: ${(error as Error).message}`));
           process.exit(1);
         }
 
         const result = runAgent(survey, parsed);
         if (!result.ok) {
-          console.error(
-            JSON.stringify(
-              { ok: false, errors: result.errors, visited: result.visited },
-              null,
-              2,
-            ),
-          );
+          for (const err of result.errors) {
+            console.error(
+              `${pc.red(pc.bold(err.reason))} ${pc.cyan(err.questionId)}${err.detail ? pc.dim(` — ${err.detail}`) : ""}`,
+            );
+          }
+          console.error(pc.dim(`visited: ${result.visited.join(" → ")}`));
           process.exit(1);
         }
 
@@ -114,11 +114,13 @@ export function buildProgram(): Command {
           skipConfirm: Boolean(opts.yes),
         });
         if (!summary.confirmed) {
-          console.error(`Cancelled: ${summary.reason}`);
+          console.error(pc.red(`Cancelled: ${summary.reason}`));
           process.exit(1);
         }
 
-        console.log(saveResponse(survey.id, result.answers));
+        console.log(
+          pc.cyan(pc.underline(saveResponse(survey.id, result.answers))),
+        );
         return;
       }
 
@@ -148,7 +150,7 @@ export function buildProgram(): Command {
       });
       if (!result.ok) {
         saveInProgress(survey.id, result.partial, result.lastQuestionId);
-        console.error("Saved in-progress. Run again to resume.");
+        console.error(pc.dim("Saved in-progress. Run again to resume."));
         process.exit(1);
       }
 
@@ -156,12 +158,14 @@ export function buildProgram(): Command {
         skipConfirm: Boolean(opts.yes),
       });
       if (!summary.confirmed) {
-        console.error(`Cancelled: ${summary.reason}`);
+        console.error(pc.red(`Cancelled: ${summary.reason}`));
         process.exit(1);
       }
 
       clearInProgress(survey.id);
-      console.log(saveResponse(survey.id, result.answers));
+      console.log(
+        pc.cyan(pc.underline(saveResponse(survey.id, result.answers))),
+      );
     });
 
   const responses = program
@@ -196,10 +200,10 @@ export function buildProgram(): Command {
 
       const all = listResponses(id);
       if (all.length === 0) {
-        console.log("(no responses)");
+        console.log(pc.dim("(no responses)"));
         return;
       }
-      for (const response of all) console.log(response.timestamp);
+      for (const response of all) console.log(pc.cyan(response.timestamp));
     });
 
   responses
@@ -213,10 +217,10 @@ export function buildProgram(): Command {
       }
       const response = readResponse(id, timestamp);
       if (!response) {
-        console.error("not found");
+        console.error(pc.red("not found"));
         process.exit(1);
       }
-      console.log(JSON.stringify(response, null, 2));
+      console.log(colorizeJson(response));
     });
 
   return program;
@@ -226,6 +230,14 @@ function formatCell(value: unknown): string {
   if (value === undefined || value === null) return "";
   if (Array.isArray(value)) return value.join(",");
   return String(value);
+}
+
+function colorizeJson(value: unknown): string {
+  const json = JSON.stringify(value, null, 2);
+  return json.replace(
+    /"([^"]+)":/g,
+    (_match, key) => `${pc.cyan(`"${key}"`)}:`,
+  );
 }
 
 if (import.meta.main) {
