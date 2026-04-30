@@ -1,5 +1,7 @@
 # @crafter/survey-cli
 
+![survey-cli hero](.github/assets/hero.jpeg)
+
 Run surveys from your terminal. Agent-friendly, type-safe, OSS.
 
 ```bash
