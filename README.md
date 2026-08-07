@@ -67,9 +67,9 @@ Responses persist to `~/.survey-cli/<survey-id>/<timestamp>.json`. Override with
 | **Agent batch** | Pipeline / IA agent / CI | `survey take <id> --answers '{...}'` |
 | **Resume** | Cancelaste a la mitad | `survey take <id>` (auto-detecta in-progress) |
 
-## Roadmap (skills)
+## Roadmap (skills — deferred)
 
-Two Claude Code skills planned to ship alongside this CLI:
+The following Claude Code skills are deferred and are not part of the current release:
 
 - `/survey-create` — generate `defineSurvey({...})` from a prompt ("post-event feedback, 6 questions")
 - `/survey-fill` — agent fills `--answers` from local context (CLAUDE.md, env, vault) and submits
