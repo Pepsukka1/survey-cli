@@ -91,10 +91,14 @@ export function readResponse(
 }
 
 export function discoverSurveyFiles(dir = "./surveys"): string[] {
-  const searchDir =
-    !existsSync(dir) && dir === "./surveys" && existsSync("./examples")
-      ? "./examples"
-      : dir;
+  const fallbackToExamples =
+    !existsSync(dir) && dir === "./surveys" && existsSync("./examples");
+  const searchDir = fallbackToExamples ? "./examples" : dir;
+  if (fallbackToExamples) {
+    console.error(
+      "Warning: ./surveys not found; falling back to ./examples.",
+    );
+  }
   if (!existsSync(searchDir)) return [];
   return readdirSync(searchDir)
     .filter(
