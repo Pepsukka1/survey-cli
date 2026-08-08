@@ -4,6 +4,7 @@ import {
   describe,
   expect,
   setSystemTime,
+  spyOn,
   test,
 } from "bun:test";
 import {
@@ -26,6 +27,7 @@ import {
 } from "../src/storage.ts";
 
 const originalHome = process.env.SURVEY_CLI_HOME;
+const originalCwd = process.cwd();
 let home: string;
 
 beforeEach(() => {
@@ -35,6 +37,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  process.chdir(originalCwd);
   setSystemTime();
   if (originalHome === undefined) {
     delete process.env.SURVEY_CLI_HOME;
@@ -97,6 +100,26 @@ describe("storage", () => {
         .map((file) => file.split("/").pop())
         .sort(),
     ).toEqual(["first.ts", "second.mjs"]);
+  });
+
+  test("discoverSurveyFiles warns when falling back to examples", () => {
+    const examplesDir = join(home, "examples");
+    mkdirSync(examplesDir, { recursive: true });
+    writeFileSync(join(examplesDir, "example.ts"), "export default {};");
+    process.chdir(home);
+
+    const error = spyOn(console, "error").mockImplementation(() => undefined);
+    try {
+      expect(discoverSurveyFiles()).toEqual([
+        join("./examples", "example.ts"),
+      ]);
+      expect(error).toHaveBeenCalledTimes(1);
+      expect(error).toHaveBeenCalledWith(
+        "Warning: ./surveys not found; falling back to ./examples.",
+      );
+    } finally {
+      error.mockRestore();
+    }
   });
 
   test("loadSurveyById returns matching survey", async () => {
