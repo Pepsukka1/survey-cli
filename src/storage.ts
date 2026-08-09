@@ -90,6 +90,17 @@ export function readResponse(
   );
 }
 
+export function deleteResponse(
+  surveyId: string,
+  timestamp: string,
+): SavedResponse | null {
+  const response = readResponse(surveyId, timestamp);
+  if (!response) return null;
+
+  unlinkSync(join(surveyDir(surveyId), `${response.timestamp}.json`));
+  return response;
+}
+
 export function discoverSurveyFiles(dir = "./surveys"): string[] {
   const fallbackToExamples =
     !existsSync(dir) && dir === "./surveys" && existsSync("./examples");

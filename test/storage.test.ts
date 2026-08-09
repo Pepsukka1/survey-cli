@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   clearInProgress,
+  deleteResponse,
   discoverSurveyFiles,
   listResponses,
   loadInProgress,
@@ -86,6 +87,16 @@ describe("storage", () => {
 
     expect(listResponses("onboarding")).toHaveLength(1);
     expect(listResponses("onboarding")[0]?.answers).toEqual({ role: "dev" });
+  });
+
+  test("deleteResponse removes a matching saved response", () => {
+    const path = saveResponse("onboarding", { role: "dev" });
+
+    const deleted = deleteResponse("onboarding", "2026-04-30T06-00");
+
+    expect(deleted?.timestamp).toBe("2026-04-30T06-00-00-000Z");
+    expect(existsSync(path)).toBe(false);
+    expect(deleteResponse("onboarding", "missing")).toBeNull();
   });
 
   test("discoverSurveyFiles finds TypeScript and ESM survey files", () => {

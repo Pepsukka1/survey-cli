@@ -8,6 +8,7 @@ import { showSummary } from "./runner/summary.ts";
 import { serializeSurvey } from "./serialize.ts";
 import {
   clearInProgress,
+  deleteResponse,
   listResponses,
   loadAllSurveys,
   loadInProgress,
@@ -221,6 +222,23 @@ export function buildProgram(): Command {
         process.exit(1);
       }
       console.log(colorizeJson(response));
+    });
+
+  responses
+    .command("delete <timestamp>")
+    .description("Delete one response by timestamp prefix")
+    .action((timestamp, _opts, cmd) => {
+      const id = cmd.parent?.args[0];
+      if (!id) {
+        console.error("missing survey id");
+        process.exit(1);
+      }
+      const deleted = deleteResponse(id, timestamp);
+      if (!deleted) {
+        console.error(pc.red(`Response not found: ${timestamp}`));
+        process.exit(1);
+      }
+      console.log(pc.dim(`Deleted ${deleted.timestamp}`));
     });
 
   return program;
