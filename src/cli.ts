@@ -5,6 +5,7 @@ import pc from "picocolors";
 import { runAgent } from "./runner/agent.ts";
 import { runInteractive } from "./runner/interactive.ts";
 import { showSummary } from "./runner/summary.ts";
+import { scaffoldSurvey } from "./scaffold.ts";
 import { serializeSurvey } from "./serialize.ts";
 import {
   clearInProgress,
@@ -25,6 +26,19 @@ export function buildProgram(): Command {
       "Run surveys from your terminal. Agent-friendly, type-safe, OSS.",
     )
     .version("0.0.1");
+
+  program
+    .command("new <id>")
+    .description("Create a survey scaffold")
+    .option("-d, --dir <path>", "directory for the new survey", "./surveys")
+    .action((id, opts) => {
+      try {
+        console.log(pc.cyan(scaffoldSurvey(id, opts.dir)));
+      } catch (error) {
+        console.error(pc.red((error as Error).message));
+        process.exit(1);
+      }
+    });
 
   program
     .command("list")
