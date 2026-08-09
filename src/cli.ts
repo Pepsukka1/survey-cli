@@ -1,7 +1,7 @@
 import { confirm, intro, isCancel, outro } from "@clack/prompts";
 import { Command } from "commander";
-import { stringify } from "csv-stringify/sync";
 import pc from "picocolors";
+import { buildCsvExport } from "./export.ts";
 import { runAgent } from "./runner/agent.ts";
 import { runInteractive } from "./runner/interactive.ts";
 import { showSummary } from "./runner/summary.ts";
@@ -176,18 +176,15 @@ export function buildProgram(): Command {
       if (opts.export) {
         const all = listResponses(id);
         if (opts.export === "csv") {
-          const answerIds = new Set<string>();
-          for (const response of all) {
-            for (const key of Object.keys(response.answers)) answerIds.add(key);
+          const exported = buildCsvExport(all);
+          if (exported.mixedShapes) {
+            console.error(
+              pc.yellow(
+                "Warning: responses contain different answer shapes; CSV columns are unioned and missing answers are blank.",
+              ),
+            );
           }
-          const headers = ["timestamp", ...answerIds];
-          const rows = all.map((response) => [
-            response.timestamp,
-            ...Array.from(answerIds).map((key) =>
-              formatCell(response.answers[key]),
-            ),
-          ]);
-          process.stdout.write(stringify([headers, ...rows]));
+          process.stdout.write(exported.csv);
           return;
         }
         if (opts.export === "json") {
@@ -224,12 +221,6 @@ export function buildProgram(): Command {
     });
 
   return program;
-}
-
-function formatCell(value: unknown): string {
-  if (value === undefined || value === null) return "";
-  if (Array.isArray(value)) return value.join(",");
-  return String(value);
 }
 
 function colorizeJson(value: unknown): string {
