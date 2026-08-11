@@ -15,7 +15,9 @@ export function scaffoldSurvey(id: string, dir = "./surveys"): string {
   const path = join(dir, `${surveyId}.ts`);
   if (existsSync(path)) throw new Error(`Survey already exists: ${path}`);
 
-  const source = `import { defineSurvey, q } from "@crafter/survey-cli/define";\n\nexport default defineSurvey({\n  id: ${JSON.stringify(surveyId)},\n  title: ${JSON.stringify(surveyId)},\n  questions: [\n    q.text("first_question", "Your first question?"),\n  ],\n});\n`;
+  // Keep generated surveys self-contained. A compiled/global CLI cannot make a
+  // bare @crafter/survey-cli import resolvable from an unrelated project dir.
+  const source = `function defineSurvey<T>(survey: T): T {\n  return survey;\n}\n\nexport default defineSurvey({\n  id: ${JSON.stringify(surveyId)},\n  title: ${JSON.stringify(surveyId)},\n  questions: [\n    {\n      id: "first_question",\n      type: "text",\n      prompt: "Your first question?",\n    },\n  ],\n});\n`;
 
   writeFileSync(path, source);
   return path;
