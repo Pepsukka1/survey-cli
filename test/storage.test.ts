@@ -99,6 +99,30 @@ describe("storage", () => {
     expect(deleteResponse("onboarding", "missing")).toBeNull();
   });
 
+  test("deleteResponse unlinks the enumerated file, not a path from corrupt metadata", () => {
+    const surveyPath = join(home, "onboarding");
+    mkdirSync(surveyPath, { recursive: true });
+    const corruptPath = join(surveyPath, "corrupt.json");
+    const outsidePath = join(home, "target.json");
+
+    writeFileSync(
+      corruptPath,
+      JSON.stringify({
+        surveyId: "onboarding",
+        timestamp: "../target",
+        answers: { role: "dev" },
+      }),
+    );
+    writeFileSync(outsidePath, "must survive");
+
+    const deleted = deleteResponse("onboarding", "../target");
+
+    expect(deleted?.timestamp).toBe("../target");
+    expect(existsSync(corruptPath)).toBe(false);
+    expect(existsSync(outsidePath)).toBe(true);
+    expect(readFileSync(outsidePath, "utf8")).toBe("must survive");
+  });
+
   test("discoverSurveyFiles finds TypeScript and ESM survey files", () => {
     const dir = join(home, "surveys");
     mkdirSync(dir, { recursive: true });
