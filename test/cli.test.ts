@@ -10,6 +10,7 @@ describe("buildProgram", () => {
   test("registers expected subcommands", () => {
     const names = buildProgram().commands.map((command) => command.name());
 
+    expect(names).toContain("new");
     expect(names).toContain("list");
     expect(names).toContain("schema");
     expect(names).toContain("take");
