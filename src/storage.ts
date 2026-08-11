@@ -70,8 +70,7 @@ export function clearInProgress(surveyId: string): void {
 export function listResponses(surveyId: string): SavedResponse[] {
   const dir = surveyDir(surveyId);
   if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((file) => file.endsWith(".json") && file !== "in-progress.json")
+  return responseFiles(dir)
     .map(
       (file) =>
         JSON.parse(readFileSync(join(dir, file), "utf8")) as SavedResponse,
@@ -94,11 +93,26 @@ export function deleteResponse(
   surveyId: string,
   timestamp: string,
 ): SavedResponse | null {
-  const response = readResponse(surveyId, timestamp);
-  if (!response) return null;
+  const dir = surveyDir(surveyId);
 
-  unlinkSync(join(surveyDir(surveyId), `${response.timestamp}.json`));
-  return response;
+  for (const file of responseFiles(dir)) {
+    const path = join(dir, file);
+    const response = JSON.parse(readFileSync(path, "utf8")) as SavedResponse;
+    if (!response.timestamp.startsWith(timestamp)) continue;
+
+    // Delete the file that was actually enumerated from the survey directory.
+    // Never reconstruct a path from untrusted JSON metadata.
+    unlinkSync(path);
+    return response;
+  }
+
+  return null;
+}
+
+function responseFiles(dir: string): string[] {
+  return readdirSync(dir).filter(
+    (file) => file.endsWith(".json") && file !== "in-progress.json",
+  );
 }
 
 export function discoverSurveyFiles(dir = "./surveys"): string[] {
