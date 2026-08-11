@@ -5,6 +5,8 @@ import { join, resolve } from "node:path";
 import { scaffoldSurvey } from "../src/scaffold.ts";
 import { loadSurveyById } from "../src/storage.ts";
 
+const decoder = new TextDecoder();
+
 test("survey new scaffold is discoverable and parses", async () => {
   const temp = mkdtempSync(join(tmpdir(), "survey-new-source-"));
   const surveysDir = join(temp, "surveys");
@@ -44,9 +46,9 @@ test("compiled CLI can create and list a scaffold from an external directory", (
       stderr: "pipe",
     });
     expect(create.exitCode).toBe(0);
-    expect(readFileSync(join(externalDir, "surveys", "demo.ts"), "utf8")).not.toContain(
-      "@crafter/survey-cli",
-    );
+    expect(
+      readFileSync(join(externalDir, "surveys", "demo.ts"), "utf8"),
+    ).not.toContain("@crafter/survey-cli");
 
     const list = Bun.spawnSync([binary, "list"], {
       cwd: externalDir,
@@ -54,7 +56,7 @@ test("compiled CLI can create and list a scaffold from an external directory", (
       stderr: "pipe",
     });
     expect(list.exitCode).toBe(0);
-    expect(list.stdout.toString()).toContain("demo");
+    expect(decoder.decode(list.stdout)).toContain("demo");
   } finally {
     rmSync(temp, { recursive: true, force: true });
   }
