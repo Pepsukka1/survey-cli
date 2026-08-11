@@ -2,7 +2,10 @@ import { expect, test } from "bun:test";
 import { buildCsvExport } from "../src/export.ts";
 import type { SavedResponse } from "../src/storage.ts";
 
-function response(timestamp: string, answers: Record<string, unknown>): SavedResponse {
+function response(
+  timestamp: string,
+  answers: Record<string, unknown>,
+): SavedResponse {
   return { surveyId: "demo", timestamp, answers };
 }
 
