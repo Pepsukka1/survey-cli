@@ -20,10 +20,22 @@ export function scaffoldSurvey(id: string, dir = "./surveys"): string {
   // and defineSurvey validation semantics.
   const source = `type Answers = Record<string, unknown>;
 
+type SafeParseIssue = {
+  message: string;
+};
+
+type SafeParseResult =
+  | { success: true; data: unknown }
+  | { success: false; error: { issues: SafeParseIssue[] } };
+
+type SafeParseSchema = {
+  safeParse(value: unknown): SafeParseResult;
+};
+
 type BaseQuestion = {
   id: string;
   prompt: string;
-  schema?: unknown;
+  schema?: SafeParseSchema;
   next?: (answers: Answers) => string | null;
   skipIf?: (answers: Answers) => boolean;
 };
