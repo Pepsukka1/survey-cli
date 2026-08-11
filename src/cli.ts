@@ -7,6 +7,7 @@ import { runInteractive } from "./runner/interactive.ts";
 import { showSummary } from "./runner/summary.ts";
 import { serializeSurvey } from "./serialize.ts";
 import {
+  AmbiguousResponsePrefixError,
   clearInProgress,
   deleteResponse,
   listResponses,
@@ -219,12 +220,24 @@ export function buildProgram(): Command {
           return;
         }
 
-        const deleted = deleteResponse(id, timestamp);
-        if (!deleted) {
-          console.error(pc.red(`Response not found: ${timestamp}`));
-          process.exit(1);
+        try {
+          const deleted = deleteResponse(id, timestamp);
+          if (!deleted) {
+            console.error(pc.red(`Response not found: ${timestamp}`));
+            process.exit(1);
+          }
+          console.log(pc.dim(`Deleted ${deleted.timestamp}`));
+        } catch (error) {
+          if (error instanceof AmbiguousResponsePrefixError) {
+            console.error(
+              pc.red(
+                `Ambiguous response timestamp: ${timestamp}\nMatches:\n${error.matches.map((match) => `  ${match}`).join("\n")}`,
+              ),
+            );
+            process.exit(1);
+          }
+          throw error;
         }
-        console.log(pc.dim(`Deleted ${deleted.timestamp}`));
         return;
       }
 
