@@ -17,6 +17,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  AmbiguousResponsePrefixError,
   clearInProgress,
   deleteResponse,
   discoverSurveyFiles,
@@ -89,7 +90,7 @@ describe("storage", () => {
     expect(listResponses("onboarding")[0]?.answers).toEqual({ role: "dev" });
   });
 
-  test("deleteResponse removes a matching saved response", () => {
+  test("deleteResponse removes a uniquely matching saved response", () => {
     const path = saveResponse("onboarding", { role: "dev" });
 
     const deleted = deleteResponse("onboarding", "2026-04-30T06-00");
@@ -99,10 +100,28 @@ describe("storage", () => {
     expect(deleteResponse("onboarding", "missing")).toBeNull();
   });
 
-  test("deleteResponse unlinks the enumerated file, not a path from corrupt metadata", () => {
+  test("deleteResponse rejects ambiguous prefixes without deleting either response", () => {
+    const dir = join(home, "onboarding");
+    mkdirSync(dir, { recursive: true });
+    const first = join(dir, "2026-04-30T06-00-00-000Z.json");
+    const second = join(dir, "2026-04-30T06-00-30-000Z.json");
+    const payload = (timestamp: string) =>
+      JSON.stringify({ surveyId: "onboarding", timestamp, answers: {} });
+    writeFileSync(first, payload("2026-04-30T06-00-00-000Z"));
+    writeFileSync(second, payload("2026-04-30T06-00-30-000Z"));
+
+    expect(() => deleteResponse("onboarding", "2026-04-30T06-00")).toThrow(
+      AmbiguousResponsePrefixError,
+    );
+    expect(existsSync(first)).toBe(true);
+    expect(existsSync(second)).toBe(true);
+  });
+
+  test("deleteResponse ignores corrupt timestamp metadata when choosing the unlink path", () => {
     const surveyPath = join(home, "onboarding");
     mkdirSync(surveyPath, { recursive: true });
-    const corruptPath = join(surveyPath, "corrupt.json");
+    const responseTimestamp = "2026-04-30T06-00-00-000Z";
+    const corruptPath = join(surveyPath, `${responseTimestamp}.json`);
     const outsidePath = join(home, "target.json");
 
     writeFileSync(
@@ -115,9 +134,9 @@ describe("storage", () => {
     );
     writeFileSync(outsidePath, "must survive");
 
-    const deleted = deleteResponse("onboarding", "../target");
+    const deleted = deleteResponse("onboarding", responseTimestamp);
 
-    expect(deleted?.timestamp).toBe("../target");
+    expect(deleted?.timestamp).toBe(responseTimestamp);
     expect(existsSync(corruptPath)).toBe(false);
     expect(existsSync(outsidePath)).toBe(true);
     expect(readFileSync(outsidePath, "utf8")).toBe("must survive");
