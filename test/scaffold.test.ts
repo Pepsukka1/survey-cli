@@ -82,6 +82,41 @@ test("standalone scaffold preserves Survey question shape", () => {
   }
 });
 
+test("standalone scaffold requires safeParse-capable schemas", () => {
+  const temp = mkdtempSync(join(tmpdir(), "survey-new-schema-"));
+  const surveysDir = join(temp, "surveys");
+
+  try {
+    const path = scaffoldSurvey("demo", surveysDir);
+    const source = readFileSync(path, "utf8");
+    const prompt = '      prompt: "Your first question?",';
+
+    const validSource = source.replace(
+      prompt,
+      `${prompt}\n      schema: {\n        safeParse(value: unknown) {\n          return { success: true as const, data: value };\n        },\n      },`,
+    );
+    writeFileSync(path, validSource);
+    expect(typeErrors(path)).toHaveLength(0);
+
+    const invalidSource = source.replace(
+      prompt,
+      `${prompt}\n      schema: "required",`,
+    );
+    writeFileSync(path, invalidSource);
+    const messages = typeErrors(path).map((diagnostic) =>
+      ts.flattenDiagnosticMessageText(diagnostic.messageText, "\n"),
+    );
+    expect(
+      messages.some(
+        (message) =>
+          message.includes("SafeParseSchema") || message.includes("safeParse"),
+      ),
+    ).toBe(true);
+  } finally {
+    rmSync(temp, { recursive: true, force: true });
+  }
+});
+
 test("standalone defineSurvey keeps empty and duplicate-id runtime checks", async () => {
   const temp = mkdtempSync(join(tmpdir(), "survey-new-validation-"));
   const surveysDir = join(temp, "surveys");
