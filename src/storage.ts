@@ -29,6 +29,16 @@ export type SavedResponse = {
   lastQuestionId?: string | null;
 };
 
+export class AmbiguousResponsePrefixError extends Error {
+  readonly matches: string[];
+
+  constructor(prefix: string, matches: string[]) {
+    super(`Ambiguous response timestamp prefix: ${prefix}`);
+    this.name = "AmbiguousResponsePrefixError";
+    this.matches = matches;
+  }
+}
+
 export function saveResponse(surveyId: string, answers: Answers): string {
   const dir = surveyDir(surveyId);
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -94,25 +104,36 @@ export function deleteResponse(
   timestamp: string,
 ): SavedResponse | null {
   const dir = surveyDir(surveyId);
+  const matches = responseFiles(dir)
+    .map((file) => ({ file, timestamp: responseTimestamp(file) }))
+    .filter((entry) => entry.timestamp.startsWith(timestamp));
 
-  for (const file of responseFiles(dir)) {
-    const path = join(dir, file);
-    const response = JSON.parse(readFileSync(path, "utf8")) as SavedResponse;
-    if (!response.timestamp.startsWith(timestamp)) continue;
-
-    // Delete the file that was actually enumerated from the survey directory.
-    // Never reconstruct a path from untrusted JSON metadata.
-    unlinkSync(path);
-    return response;
+  if (matches.length === 0) return null;
+  if (matches.length > 1) {
+    throw new AmbiguousResponsePrefixError(
+      timestamp,
+      matches.map((entry) => entry.timestamp),
+    );
   }
 
-  return null;
+  const match = matches[0]!;
+  const path = join(dir, match.file);
+  const response = JSON.parse(readFileSync(path, "utf8")) as SavedResponse;
+
+  // The enumerated filename is the authoritative response identity. JSON metadata
+  // is untrusted and must never influence the path that gets unlinked.
+  unlinkSync(path);
+  return { ...response, timestamp: match.timestamp };
 }
 
 function responseFiles(dir: string): string[] {
   return readdirSync(dir).filter(
     (file) => file.endsWith(".json") && file !== "in-progress.json",
   );
+}
+
+function responseTimestamp(file: string): string {
+  return file.slice(0, -".json".length);
 }
 
 export function discoverSurveyFiles(dir = "./surveys"): string[] {
