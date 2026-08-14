@@ -17,7 +17,9 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  AmbiguousResponsePrefixError,
   clearInProgress,
+  deleteResponse,
   discoverSurveyFiles,
   listResponses,
   loadInProgress,
@@ -88,6 +90,58 @@ describe("storage", () => {
     expect(listResponses("onboarding")[0]?.answers).toEqual({ role: "dev" });
   });
 
+  test("deleteResponse removes a uniquely matching saved response", () => {
+    const path = saveResponse("onboarding", { role: "dev" });
+
+    const deleted = deleteResponse("onboarding", "2026-04-30T06-00");
+
+    expect(deleted?.timestamp).toBe("2026-04-30T06-00-00-000Z");
+    expect(existsSync(path)).toBe(false);
+    expect(deleteResponse("onboarding", "missing")).toBeNull();
+  });
+
+  test("deleteResponse rejects ambiguous prefixes without deleting either response", () => {
+    const dir = join(home, "onboarding");
+    mkdirSync(dir, { recursive: true });
+    const first = join(dir, "2026-04-30T06-00-00-000Z.json");
+    const second = join(dir, "2026-04-30T06-00-30-000Z.json");
+    const payload = (timestamp: string) =>
+      JSON.stringify({ surveyId: "onboarding", timestamp, answers: {} });
+    writeFileSync(first, payload("2026-04-30T06-00-00-000Z"));
+    writeFileSync(second, payload("2026-04-30T06-00-30-000Z"));
+
+    expect(() => deleteResponse("onboarding", "2026-04-30T06-00")).toThrow(
+      AmbiguousResponsePrefixError,
+    );
+    expect(existsSync(first)).toBe(true);
+    expect(existsSync(second)).toBe(true);
+  });
+
+  test("deleteResponse ignores corrupt timestamp metadata when choosing the unlink path", () => {
+    const surveyPath = join(home, "onboarding");
+    mkdirSync(surveyPath, { recursive: true });
+    const responseTimestamp = "2026-04-30T06-00-00-000Z";
+    const corruptPath = join(surveyPath, `${responseTimestamp}.json`);
+    const outsidePath = join(home, "target.json");
+
+    writeFileSync(
+      corruptPath,
+      JSON.stringify({
+        surveyId: "onboarding",
+        timestamp: "../target",
+        answers: { role: "dev" },
+      }),
+    );
+    writeFileSync(outsidePath, "must survive");
+
+    const deleted = deleteResponse("onboarding", responseTimestamp);
+
+    expect(deleted?.timestamp).toBe(responseTimestamp);
+    expect(existsSync(corruptPath)).toBe(false);
+    expect(existsSync(outsidePath)).toBe(true);
+    expect(readFileSync(outsidePath, "utf8")).toBe("must survive");
+  });
+
   test("discoverSurveyFiles finds TypeScript and ESM survey files", () => {
     const dir = join(home, "surveys");
     mkdirSync(dir, { recursive: true });
@@ -110,9 +164,7 @@ describe("storage", () => {
 
     const error = spyOn(console, "error").mockImplementation(() => undefined);
     try {
-      expect(discoverSurveyFiles()).toEqual([
-        join("./examples", "example.ts"),
-      ]);
+      expect(discoverSurveyFiles()).toEqual([join("./examples", "example.ts")]);
       expect(error).toHaveBeenCalledTimes(1);
       expect(error).toHaveBeenCalledWith(
         "Warning: ./surveys not found; falling back to ./examples.",

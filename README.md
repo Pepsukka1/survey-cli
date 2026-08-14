@@ -56,6 +56,7 @@ survey take <id> --yes                 # skip summary confirm
 survey responses <id>                  # list saved responses
 survey responses <id> --export csv     # export all to CSV
 survey responses <id> show <ts>        # show one response by timestamp
+survey responses <id> delete <ts>      # delete one response by timestamp
 ```
 
 Responses persist to `~/.survey-cli/<survey-id>/<timestamp>.json`. Override with `SURVEY_CLI_HOME=/path`.

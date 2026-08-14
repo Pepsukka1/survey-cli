@@ -8,7 +8,9 @@ import { showSummary } from "./runner/summary.ts";
 import { scaffoldSurvey } from "./scaffold.ts";
 import { serializeSurvey } from "./serialize.ts";
 import {
+  AmbiguousResponsePrefixError,
   clearInProgress,
+  deleteResponse,
   listResponses,
   loadAllSurveys,
   loadInProgress,
@@ -182,12 +184,16 @@ export function buildProgram(): Command {
       );
     });
 
-  const responses = program
-    .command("responses <id>")
-    .description("List or show responses for a survey")
+  program
+    .command("responses <id> [action] [timestamp]")
+    .description("List, show, delete, or export responses for a survey")
     .option("--export <format>", "export all responses (csv|json)")
-    .action((id, opts) => {
+    .action((id, action, timestamp, opts) => {
       if (opts.export) {
+        if (action || timestamp) {
+          console.error("--export cannot be combined with show or delete");
+          process.exit(1);
+        }
         const all = listResponses(id);
         if (opts.export === "csv") {
           const exported = buildCsvExport(all);
@@ -209,29 +215,54 @@ export function buildProgram(): Command {
         process.exit(1);
       }
 
+      if (action === "show" || action === "delete") {
+        if (!timestamp) {
+          console.error(`Missing timestamp for responses ${id} ${action}`);
+          process.exit(1);
+        }
+
+        if (action === "show") {
+          const response = readResponse(id, timestamp);
+          if (!response) {
+            console.error(pc.red("not found"));
+            process.exit(1);
+          }
+          console.log(colorizeJson(response));
+          return;
+        }
+
+        try {
+          const deleted = deleteResponse(id, timestamp);
+          if (!deleted) {
+            console.error(pc.red(`Response not found: ${timestamp}`));
+            process.exit(1);
+          }
+          console.log(pc.dim(`Deleted ${deleted.timestamp}`));
+        } catch (error) {
+          if (error instanceof AmbiguousResponsePrefixError) {
+            console.error(
+              pc.red(
+                `Ambiguous response timestamp: ${timestamp}\nMatches:\n${error.matches.map((match) => `  ${match}`).join("\n")}`,
+              ),
+            );
+            process.exit(1);
+          }
+          throw error;
+        }
+        return;
+      }
+
+      if (action) {
+        console.error(`Unknown responses action: ${action}`);
+        process.exit(1);
+      }
+
       const all = listResponses(id);
       if (all.length === 0) {
         console.log(pc.dim("(no responses)"));
         return;
       }
       for (const response of all) console.log(pc.cyan(response.timestamp));
-    });
-
-  responses
-    .command("show <timestamp>")
-    .description("Show one response by timestamp prefix")
-    .action((timestamp, _opts, cmd) => {
-      const id = cmd.parent?.args[0];
-      if (!id) {
-        console.error("missing survey id");
-        process.exit(1);
-      }
-      const response = readResponse(id, timestamp);
-      if (!response) {
-        console.error(pc.red("not found"));
-        process.exit(1);
-      }
-      console.log(colorizeJson(response));
     });
 
   return program;
