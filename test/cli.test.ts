@@ -1,11 +1,4 @@
-import {
-  afterEach,
-  beforeEach,
-  describe,
-  expect,
-  spyOn,
-  test,
-} from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -97,9 +90,7 @@ describe("buildProgram", () => {
       ]);
 
       expect(existsSync(path)).toBe(false);
-      expect(log).toHaveBeenCalledWith(
-        "Deleted 2026-04-30T06-00-00-000Z",
-      );
+      expect(log).toHaveBeenCalledWith("Deleted 2026-04-30T06-00-00-000Z");
     } finally {
       log.mockRestore();
     }

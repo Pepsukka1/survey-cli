@@ -108,7 +108,8 @@ export function deleteResponse(
     .map((file) => ({ file, timestamp: responseTimestamp(file) }))
     .filter((entry) => entry.timestamp.startsWith(timestamp));
 
-  if (matches.length === 0) return null;
+  const [match] = matches;
+  if (!match) return null;
   if (matches.length > 1) {
     throw new AmbiguousResponsePrefixError(
       timestamp,
@@ -116,7 +117,6 @@ export function deleteResponse(
     );
   }
 
-  const match = matches[0]!;
   const path = join(dir, match.file);
   const response = JSON.parse(readFileSync(path, "utf8")) as SavedResponse;
 
@@ -141,9 +141,7 @@ export function discoverSurveyFiles(dir = "./surveys"): string[] {
     !existsSync(dir) && dir === "./surveys" && existsSync("./examples");
   const searchDir = fallbackToExamples ? "./examples" : dir;
   if (fallbackToExamples) {
-    console.error(
-      "Warning: ./surveys not found; falling back to ./examples.",
-    );
+    console.error("Warning: ./surveys not found; falling back to ./examples.");
   }
   if (!existsSync(searchDir)) return [];
   return readdirSync(searchDir)

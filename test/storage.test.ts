@@ -164,9 +164,7 @@ describe("storage", () => {
 
     const error = spyOn(console, "error").mockImplementation(() => undefined);
     try {
-      expect(discoverSurveyFiles()).toEqual([
-        join("./examples", "example.ts"),
-      ]);
+      expect(discoverSurveyFiles()).toEqual([join("./examples", "example.ts")]);
       expect(error).toHaveBeenCalledTimes(1);
       expect(error).toHaveBeenCalledWith(
         "Warning: ./surveys not found; falling back to ./examples.",
