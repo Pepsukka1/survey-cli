@@ -127,7 +127,10 @@ test("standalone defineSurvey keeps empty and duplicate-id runtime checks", asyn
     expect(source).toContain(STARTER_QUESTION);
 
     const emptyPath = join(surveysDir, "empty.ts");
-    writeFileSync(emptyPath, source.replace(STARTER_QUESTION, "  questions: [],"));
+    writeFileSync(
+      emptyPath,
+      source.replace(STARTER_QUESTION, "  questions: [],"),
+    );
     await expect(import(pathToFileURL(emptyPath).href)).rejects.toThrow(
       "survey must have at least one question",
     );
@@ -160,7 +163,10 @@ test("standalone defineSurvey keeps empty and duplicate-id runtime checks", asyn
 test("compiled CLI can create and list a scaffold from an external directory", () => {
   const temp = mkdtempSync(join(tmpdir(), "survey-new-built-"));
   const externalDir = join(temp, "external-project");
-  const binary = join(temp, process.platform === "win32" ? "survey.exe" : "survey");
+  const binary = join(
+    temp,
+    process.platform === "win32" ? "survey.exe" : "survey",
+  );
   mkdirSync(externalDir, { recursive: true });
 
   try {
