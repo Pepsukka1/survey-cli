@@ -46,6 +46,7 @@ Type-safe end-to-end. Branching via `next()`. Validation via Zod. No DSL.
 ## Commands
 
 ```bash
+survey new <id>                        # create surveys/<id>.ts starter scaffold
 survey list                            # list surveys in ./surveys
 survey schema <id>                     # print survey schema as JSON
 survey take <id>                       # interactive (humano en TTY)
